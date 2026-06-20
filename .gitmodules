@@ -8,3 +8,10 @@
 [submodule "examples/existing-hostile/gotosocial"]
 	path = examples/existing-hostile/gotosocial
 	url = ssh://git@codeberg.org/superseriousbusiness/gotosocial.git
+
+[submodule "examples/other-foss/reqwest"]
+	path = examples/other-foss/reqwest
+	url = git@github.com:seanmonstar/reqwest.git
+[submodule "examples/other-foss/repo-slopscore"]
+	path = examples/other-foss/repo-slopscore
+	url = ssh://git@codeberg.org/polyphony/repo-slopscore.git
