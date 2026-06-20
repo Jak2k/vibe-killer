@@ -4,6 +4,7 @@
 
 use clap::{Parser, Subcommand};
 use miette::{Diagnostic, Result};
+use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Parser, Debug, Clone)]
@@ -46,12 +47,20 @@ enum PlanningError {
 #[derive(Debug, Clone)]
 enum PlanStep {
     ShowStatus,
+    _Symlink { from: PathBuf, to: PathBuf },
 }
 
 impl PlanStep {
-    const fn execute(&self) -> Result<(), ExecutionError> {
+    fn execute(&self) -> Result<(), ExecutionError> {
         match self {
             Self::ShowStatus => Err(ExecutionError::NotImplemented),
+            Self::_Symlink { from, to } => {
+                #[cfg(target_family = "unix")]
+                std::os::unix::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
+                #[cfg(target_family = "windows")]
+                std::os::windows::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
+                Ok(())
+            }
         }
     }
 }
@@ -60,4 +69,6 @@ impl PlanStep {
 enum ExecutionError {
     #[error("This is not implemented yet. Sorry! 👉👈")]
     NotImplemented,
+    #[error("Could not create a symlink.")]
+    SymlinkFailed(#[source] std::io::Error),
 }
