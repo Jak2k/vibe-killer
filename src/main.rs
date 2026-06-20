@@ -3,7 +3,7 @@
 // SPDX-FileContributor: Jakob Schwanenberg
 // SPDX-FileContributor: Corvidae Parrot <yetanotherparrot@posteo.de>
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use miette::{Diagnostic, Result};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -24,9 +24,20 @@ struct Cli {
 #[derive(Subcommand, Debug, Clone)]
 enum Commands {
     /// Init Vibe Killer in repository
-    Init,
+    Init {
+        #[clap(value_enum)]
+        platforms: Vec<Platforms>,
+    },
     /// Report on the status of Vibe Killer in the repository
     Status,
+}
+
+#[derive(ValueEnum, Debug, Clone,Subcommand)] // ArgEnum here
+#[clap(rename_all = "kebab_case")]
+enum Platforms {
+    Claude,
+    Copilot,
+    Cursor
 }
 
 fn main() -> Result<()> {
@@ -34,13 +45,16 @@ fn main() -> Result<()> {
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
-        Some(Commands::Init) => vec![
-            PlanStep::WriteBasic,
-            PlanStep::Symlink {
-                from: "CLAUDE.md".into(),
-                to: "AGENTS.md".into(),
-            },
-        ],
+        Some(Commands::Init { platforms }) => {
+            dbg!(platforms);
+            vec![
+                PlanStep::WriteBasic,
+                PlanStep::Symlink {
+                    from: "CLAUDE.md".into(),
+                    to: "AGENTS.md".into(),
+                },
+            ]
+        }
     };
 
     if cli.dry {
