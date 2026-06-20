@@ -5,7 +5,7 @@
 
 use clap::{Parser, Subcommand};
 use miette::{Diagnostic, Result};
-use std::path::PathBuf;
+use std::{default, path::PathBuf};
 use thiserror::Error;
 
 #[derive(Parser, Debug, Clone)]
@@ -14,6 +14,9 @@ use thiserror::Error;
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
+    #[arg(short, long, default_value_t = false)]
+    #[cfg_attr(debug_assertions, arg(default_value_t = true))]
+    dry: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -29,11 +32,24 @@ fn main() -> Result<()> {
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
-        Some(Commands::Init) => return Err(PlanningError::NotImplemented.into()),
+        Some(Commands::Init) => {
+            vec![PlanStep::Symlink {
+                from: PathBuf::from("CLAUDE.md"),
+                to: PathBuf::from("AGENTS.md"),
+            }]
+        }
     };
 
+    if cli.dry {
+        println!("Dry run.")
+    }
+
     for step in plan {
-        step.execute()?;
+        if cli.dry {
+            println!("{}", step.explain());
+        } else {
+            step.execute()?;
+        }
     }
 
     Ok(())
@@ -48,14 +64,21 @@ enum PlanningError {
 #[derive(Debug, Clone)]
 enum PlanStep {
     ShowStatus,
-    _Symlink { from: PathBuf, to: PathBuf },
+    Symlink { from: PathBuf, to: PathBuf },
 }
 
 impl PlanStep {
+    fn explain(&self) -> String {
+        match self {
+            Self::ShowStatus => format!("Showing the status."),
+            Self::Symlink { from, to } => format!("Linking from {from:?} to {to:?}."),
+        }
+    }
+
     fn execute(&self) -> Result<(), ExecutionError> {
         match self {
             Self::ShowStatus => Err(ExecutionError::NotImplemented),
-            Self::_Symlink { from, to } => {
+            Self::Symlink { from, to } => {
                 #[cfg(target_family = "unix")]
                 std::os::unix::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
                 #[cfg(target_family = "windows")]
