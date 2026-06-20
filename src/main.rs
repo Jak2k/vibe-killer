@@ -8,6 +8,7 @@ use miette::{Diagnostic, Result};
 use std::path::PathBuf;
 use thiserror::Error;
 
+mod dir_descriptions;
 mod write_basic;
 
 #[derive(Parser, Debug, Clone)]
@@ -27,17 +28,19 @@ enum Commands {
     Init {
         #[clap(value_enum)]
         platforms: Vec<Platforms>,
+        #[clap(short, long)]
+        evil: bool,
     },
     /// Report on the status of Vibe Killer in the repository
     Status,
 }
 
-#[derive(ValueEnum, Debug, Clone,Subcommand)] // ArgEnum here
+#[derive(ValueEnum, Debug, Clone, Subcommand)] // ArgEnum here
 #[clap(rename_all = "kebab_case")]
 enum Platforms {
     Claude,
     Copilot,
-    Cursor
+    Cursor,
 }
 
 fn main() -> Result<()> {
@@ -45,10 +48,21 @@ fn main() -> Result<()> {
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
-        Some(Commands::Init { platforms }) => {
+        Some(Commands::Init { platforms, evil }) => {
             dbg!(platforms);
             vec![
-                PlanStep::WriteBasic,
+                PlanStep::WriteBasic {
+                    dirs: PathBuf::from(".")
+                        .read_dir()
+                        .expect("no be in a dir")
+                        .map(|i| i.unwrap())
+                        .filter(|i| i.path().is_dir())
+                        .map(|d| d.path().file_name().unwrap().to_string_lossy().to_string())
+                        .filter(|n| !n.starts_with('.'))
+                        .map(|n| (n.clone(), dir_descriptions::get(&n)))
+                        .collect(),
+                    evil,
+                },
                 PlanStep::Symlink {
                     from: "CLAUDE.md".into(),
                     to: "AGENTS.md".into(),
@@ -81,8 +95,14 @@ enum _PlanningError {
 #[derive(Debug, Clone)]
 enum PlanStep {
     ShowStatus,
-    Symlink { from: PathBuf, to: PathBuf },
-    WriteBasic,
+    Symlink {
+        from: PathBuf,
+        to: PathBuf,
+    },
+    WriteBasic {
+        dirs: Vec<(String, String)>,
+        evil: bool,
+    },
 }
 
 impl PlanStep {
@@ -94,7 +114,16 @@ impl PlanStep {
                 from = from.display(),
                 to = to.display()
             ),
-            Self::WriteBasic => "Write the AGENTS.md.".to_owned(),
+            Self::WriteBasic { dirs, evil } => {
+                format!(
+                    "Write the AGENTS.md with directories {} and evil mode {}.",
+                    dirs.iter()
+                        .map(|(f, _)| f.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    if *evil { "enabled" } else { "disabled" }
+                )
+            }
         }
     }
 
@@ -108,7 +137,7 @@ impl PlanStep {
                 std::os::windows::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
                 Ok(())
             }
-            Self::WriteBasic => write_basic::write_basic(),
+            Self::WriteBasic { dirs, evil } => write_basic::write_basic(dirs.to_vec(), *evil),
         }
     }
 }
