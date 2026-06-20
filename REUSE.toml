@@ -1,0 +1,12 @@
+version = 1
+SPDX-PackageName = "dgen"
+SPDX-FileCopyrightText = "2026 The Vibe Killer contributers"
+SPDX-License-Identifier = "CC-BY-SA-4.0 OR LicenseRef-GAL"
+SPDX-PackageDownloadLocation = "https://codeberg.org/parrot/vibe-killer/"
+
+[[annotations]]
+path = ["flake.lock", "Cargo.lock"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The Vibe Killer contributers"
+SPDX-License-Identifier = "AGPL-3.0-only OR LicenseRef-GAL"
+
