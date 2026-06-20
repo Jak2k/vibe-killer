@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 The Vibe Killer contributers
 // SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-GAL
 // SPDX-FileContributor: Jakob Schwanenberg
+// SPDX-FileContributor: yetanotherparrot
 
 use clap::{Parser, Subcommand};
 use miette::{Diagnostic, Result};
