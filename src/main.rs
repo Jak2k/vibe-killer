@@ -8,6 +8,8 @@ use miette::{Diagnostic, Result};
 use std::path::PathBuf;
 use thiserror::Error;
 
+mod folder_structure;
+
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
