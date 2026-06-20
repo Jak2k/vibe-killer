@@ -107,4 +107,6 @@ enum ExecutionError {
     SymlinkFailed(#[source] std::io::Error),
     #[error("Could not operate on AGENTS.md file.")]
     AgentsFileFailed(#[source] std::io::Error),
+    #[error("Could not render the AGENTS.md template")]
+    RenderHandlebars(#[source] handlebars::RenderError),
 }
