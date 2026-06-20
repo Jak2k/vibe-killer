@@ -10,8 +10,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use thiserror::Error;
 
-mod folder_structure;
-
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
