@@ -31,7 +31,13 @@ fn main() -> Result<()> {
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
-        Some(Commands::Init) => return Err(PlanningError::NotImplemented.into()),
+        Some(Commands::Init) => vec![
+            PlanStep::WriteBasic,
+            PlanStep::Symlink {
+                from: "CLAUDE.md".into(),
+                to: "AGENTS.md".into(),
+            },
+        ],
     };
 
     for step in plan {
@@ -42,7 +48,7 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug, Error, Diagnostic)]
-enum PlanningError {
+enum _PlanningError {
     #[error("This is not implemented yet. Sorry! 👉👈")]
     NotImplemented,
 }
@@ -50,24 +56,24 @@ enum PlanningError {
 #[derive(Debug, Clone)]
 enum PlanStep {
     ShowStatus,
-    _Symlink { from: PathBuf, to: PathBuf },
-    _WriteBasic,
+    Symlink { from: PathBuf, to: PathBuf },
+    WriteBasic,
 }
 
 impl PlanStep {
     fn execute(&self) -> Result<(), ExecutionError> {
         match self {
             Self::ShowStatus => Err(ExecutionError::NotImplemented),
-            Self::_Symlink { from, to } => {
+            Self::Symlink { from, to } => {
                 #[cfg(target_family = "unix")]
                 std::os::unix::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
                 #[cfg(target_family = "windows")]
                 std::os::windows::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
                 Ok(())
             }
-            Self::_WriteBasic => {
+            Self::WriteBasic => {
                 // Thanks to Kat Marchán (https://zkat.tech) for this!
-                // Original notice:
+                // Original notice: https://github.com/kdl-org/kdl-rs/blob/ce82d2ce3e827eddc6bbb4ec4c315aaf6f9adc08/AGENTS.md
                 let message = r#"
 # AGENTS.md
 
