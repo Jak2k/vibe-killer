@@ -5,8 +5,10 @@
 
 use clap::{Parser, Subcommand};
 use miette::{Diagnostic, Result};
-use std::{default, path::PathBuf};
+use std::path::PathBuf;
 use thiserror::Error;
+
+mod write_basic;
 
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -32,16 +34,17 @@ fn main() -> Result<()> {
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
-        Some(Commands::Init) => {
-            vec![PlanStep::Symlink {
-                from: PathBuf::from("CLAUDE.md"),
-                to: PathBuf::from("AGENTS.md"),
-            }]
-        }
+        Some(Commands::Init) => vec![
+            PlanStep::WriteBasic,
+            PlanStep::Symlink {
+                from: "CLAUDE.md".into(),
+                to: "AGENTS.md".into(),
+            },
+        ],
     };
 
     if cli.dry {
-        println!("Dry run.")
+        println!("Dry run.");
     }
 
     for step in plan {
@@ -56,7 +59,7 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug, Error, Diagnostic)]
-enum PlanningError {
+enum _PlanningError {
     #[error("This is not implemented yet. Sorry! 👉👈")]
     NotImplemented,
 }
@@ -65,13 +68,19 @@ enum PlanningError {
 enum PlanStep {
     ShowStatus,
     Symlink { from: PathBuf, to: PathBuf },
+    WriteBasic,
 }
 
 impl PlanStep {
     fn explain(&self) -> String {
         match self {
-            Self::ShowStatus => format!("Showing the status."),
-            Self::Symlink { from, to } => format!("Linking from {from:?} to {to:?}."),
+            Self::ShowStatus => "Showing the status.".to_owned(),
+            Self::Symlink { from, to } => format!(
+                "Linking from {from} to {to}.",
+                from = from.display(),
+                to = to.display()
+            ),
+            Self::WriteBasic => "Write the AGENTS.md.".to_owned(),
         }
     }
 
@@ -85,6 +94,7 @@ impl PlanStep {
                 std::os::windows::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
                 Ok(())
             }
+            Self::WriteBasic => write_basic::write_basic(),
         }
     }
 }
@@ -95,4 +105,6 @@ enum ExecutionError {
     NotImplemented,
     #[error("Could not create a symlink.")]
     SymlinkFailed(#[source] std::io::Error),
+    #[error("Could not operate on AGENTS.md file.")]
+    AgentsFileFailed(#[source] std::io::Error),
 }
