@@ -1,0 +1,6 @@
+[submodule "examples/existing-hostile/kdl-rs"]
+	path = examples/existing-hostile/kdl-rs
+	url = git@github.com:kdl-org/kdl-rs.git
+[submodule "examples/existing-hostile/gotosocial"]
+	path = examples/existing-hostile/gotosocial
+	url = ssh://git@codeberg.org/superseriousbusiness/gotosocial.git
