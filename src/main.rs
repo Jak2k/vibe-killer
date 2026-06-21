@@ -45,6 +45,7 @@ enum Platforms {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    println!("Hello! Welcome to Vibe Killer 👋");
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
