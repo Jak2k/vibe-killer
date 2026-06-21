@@ -7,5 +7,5 @@ pub fn get(name: &str) -> String {
         "templates" => "the HTML templates for the femboy auction system",
         _ => "",
     }
-    .to_string()
+    .to_owned()
 }

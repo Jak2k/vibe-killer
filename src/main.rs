@@ -5,7 +5,7 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 use miette::{Diagnostic, Result};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 mod dir_descriptions;
@@ -48,27 +48,16 @@ fn main() -> Result<()> {
 
     let plan: Vec<PlanStep> = match cli.command {
         None | Some(Commands::Status) => vec![PlanStep::ShowStatus],
-        Some(Commands::Init { platforms, evil }) => {
-            dbg!(platforms);
-            vec![
-                PlanStep::WriteBasic {
-                    dirs: PathBuf::from(".")
-                        .read_dir()
-                        .expect("no be in a dir")
-                        .map(|i| i.unwrap())
-                        .filter(|i| i.path().is_dir())
-                        .map(|d| d.path().file_name().unwrap().to_string_lossy().to_string())
-                        .filter(|n| !n.starts_with('.'))
-                        .map(|n| (n.clone(), dir_descriptions::get(&n)))
-                        .collect(),
-                    evil,
-                },
-                PlanStep::Symlink {
-                    from: "CLAUDE.md".into(),
-                    to: "AGENTS.md".into(),
-                },
-            ]
-        }
+        Some(Commands::Init { platforms: _, evil }) => vec![
+            PlanStep::WriteBasic {
+                dirs: gather_dirs()?,
+                evil,
+            },
+            PlanStep::Symlink {
+                from: "CLAUDE.md".into(),
+                to: "AGENTS.md".into(),
+            },
+        ],
     };
 
     if cli.dry {
@@ -87,9 +76,11 @@ fn main() -> Result<()> {
 }
 
 #[derive(Debug, Error, Diagnostic)]
-enum _PlanningError {
-    #[error("This is not implemented yet. Sorry! 👉👈")]
-    NotImplemented,
+enum PlanningError {
+    #[error("Could not read current directory.")]
+    ReadCurrentDirectory(#[source] std::io::Error),
+    #[error("Could not read a directory entry.")]
+    ReadDirectoryEntry(#[source] std::io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -118,7 +109,7 @@ impl PlanStep {
                 format!(
                     "Write the AGENTS.md with directories {} and evil mode {}.",
                     dirs.iter()
-                        .map(|(f, _)| f.to_string())
+                        .map(|(f, _)| f.clone())
                         .collect::<Vec<String>>()
                         .join(", "),
                     if *evil { "enabled" } else { "disabled" }
@@ -129,7 +120,10 @@ impl PlanStep {
 
     fn execute(&self) -> Result<(), ExecutionError> {
         match self {
-            Self::ShowStatus => Err(ExecutionError::NotImplemented),
+            Self::ShowStatus => {
+                show_status();
+                Ok(())
+            }
             Self::Symlink { from, to } => {
                 #[cfg(target_family = "unix")]
                 std::os::unix::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
@@ -137,15 +131,71 @@ impl PlanStep {
                 std::os::windows::fs::symlink(to, from).map_err(ExecutionError::SymlinkFailed)?;
                 Ok(())
             }
-            Self::WriteBasic { dirs, evil } => write_basic::write_basic(dirs.to_vec(), *evil),
+            Self::WriteBasic { dirs, evil } => write_basic::write_basic(dirs.clone(), *evil),
         }
+    }
+}
+
+fn gather_dirs() -> Result<Vec<(String, String)>, PlanningError> {
+    let entries = PathBuf::from(".")
+        .read_dir()
+        .map_err(PlanningError::ReadCurrentDirectory)?;
+    let mut dirs = Vec::new();
+
+    for entry in entries {
+        let entry = entry.map_err(PlanningError::ReadDirectoryEntry)?;
+        let path = entry.path();
+
+        if !path.is_dir() {
+            continue;
+        }
+
+        let Some(name) = path.file_name() else {
+            continue;
+        };
+
+        let name = name.to_string_lossy().to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+
+        dirs.push((name.clone(), dir_descriptions::get(&name)));
+    }
+
+    Ok(dirs)
+}
+
+fn show_status() {
+    let agents_path = Path::new("AGENTS.md");
+    let claude_path = Path::new("CLAUDE.md");
+    let agents_exists = agents_path.exists();
+    let claude_exists = claude_path.exists();
+
+    println!(
+        "AGENTS.md: {}",
+        if agents_exists { "present" } else { "missing" }
+    );
+    println!(
+        "CLAUDE.md: {}",
+        if claude_exists { "present" } else { "missing" }
+    );
+
+    #[cfg(target_family = "unix")]
+    match std::fs::read_link(claude_path) {
+        Ok(target) => {
+            let status = if target == agents_path {
+                "correct symlink to AGENTS.md"
+            } else {
+                "symlink points elsewhere"
+            };
+            println!("CLAUDE.md link: {status}");
+        }
+        Err(_) => println!("CLAUDE.md link: not a symlink"),
     }
 }
 
 #[derive(Debug, Error, Diagnostic)]
 enum ExecutionError {
-    #[error("This is not implemented yet. Sorry! 👉👈")]
-    NotImplemented,
     #[error("Could not create a symlink.")]
     SymlinkFailed(#[source] std::io::Error),
     #[error("Could not operate on AGENTS.md file.")]
